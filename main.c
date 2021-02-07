@@ -8,14 +8,23 @@
 
 #define LIGHT                   (*((volatile unsigned long *)0x400050FC))
 //should work without these as theyre in tmc.h
+#define SENSOR                  (*((volatile unsigned long *)0x4002400C))
+
+//danger_fix
+#define PLIGHT       (*((volatile unsigned long *)0x400253FC))
+//#define GPIO_PORTF_DATA_R       (*((volatile unsigned long *)0x400253FC))
+
+/*
 #define GPIO_PORTB_OUT          (*((volatile unsigned long *)0x400050FC)) // bits 5-0
+#define GPIO_PORTE_IN           (*((volatile unsigned long *)0x4002400C)) // bits 1-0
+*/
+
 #define GPIO_PORTB_DIR_R        (*((volatile unsigned long *)0x40005400))
 #define GPIO_PORTB_AFSEL_R      (*((volatile unsigned long *)0x40005420))
 #define GPIO_PORTB_DEN_R        (*((volatile unsigned long *)0x4000551C))
 #define GPIO_PORTB_AMSEL_R      (*((volatile unsigned long *)0x40005528))
 #define GPIO_PORTB_PCTL_R       (*((volatile unsigned long *)0x4000552C))
-#define GPIO_PORTE_IN           (*((volatile unsigned long *)0x4002400C)) // bits 1-0
-#define SENSOR                  (*((volatile unsigned long *)0x4002400C))
+
 
 #define GPIO_PORTE_DIR_R        (*((volatile unsigned long *)0x40024400))
 #define GPIO_PORTE_AFSEL_R      (*((volatile unsigned long *)0x40024420))
@@ -36,6 +45,51 @@ void PortBEF_Init(void); //Not taken care of by Texas_init - make PF1/3 outputs
 //void PortE_Init(void);
 //void PortB_Init(void);
 // ***** 3. Subroutines Section *****
+
+// Linked data structure
+struct State {
+  unsigned long Out;  // 6-bit pattern to output port B
+  unsigned long Out_p;  // 4-bit pattern to output port F, could bitshift
+  unsigned long Time; // delay in 10ms units
+  unsigned long Next[8];}; // next state for input patterns 0,1,2,3 etc
+typedef const struct State STyp;
+#define gow   0
+#define waitw 1
+#define gos   2
+#define waits 3
+#define waitp 4
+#define gop 5
+#define fla 6
+#define gop2 7
+#define fla2 8
+
+//this is an array of the states specifying what light patterns to output
+//how long to wait in that state and what to do based on the currentl
+//inputs - remember gos, waitw resolve to
+
+//lights are set based on FSM[S].output//if S = gow then it resolves to the 0th entry in this array of structs which says what lights to put on
+//now, how long and what to do next if input is 000 Next is element 0 //(goW again), if input was 010 it should go to waitW so element 2 in it's Next[] array should be waitW and from there it goes to goS
+STyp FSM[8]={
+ {0x21,3000,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}},
+ {0x22, 500,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}},
+ {0x0C,3000,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}},
+ {0x14, 500,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}},
+ {0x21,3000,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}},
+ {0x22, 500,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}},
+ {0x0C,3000,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}},
+ {0x14, 500,{gow,gow,waitw,waitw,waitw,waitw,waitw,waitw}}
+
+
+};
+unsigned long S;  // index to the current state
+unsigned long Input;
+
+
+
+
+
+
+
 
 int main(void){
   TExaS_Init(SW_PIN_PE210, LED_PIN_PB543210,ScopeOff); // activate grader and set system clock to 80 MHz
